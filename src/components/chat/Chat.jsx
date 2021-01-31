@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Avatar, IconButton } from "@material-ui/core";
 import { useParams } from "react-router-dom";
 import db from "../../firebase";
+import firebase from "firebase";
 import {
   AttachFile,
   InsertEmoticon,
@@ -9,6 +10,7 @@ import {
   MoreVert,
   SearchOutlined,
 } from "@material-ui/icons";
+import { useStateValue } from "../../StateProvider";
 import "./Chat.css";
 
 function Chat() {
@@ -17,6 +19,7 @@ function Chat() {
   const [roomName, setRoomName] = useState("");
   const { roomId } = useParams();
   const [messages, setMessages] = useState([]);
+  const [{ user }, dispatch] = useStateValue();
 
   useEffect(() => {
     if (roomId) {
@@ -40,7 +43,11 @@ function Chat() {
 
   const sendMessage = (e) => {
     e.preventDefault();
-    console.log("You typed >>>", input);
+    db.collection("rooms").doc(roomId).collection("messages").add({
+      message: input,
+      name: user.displayName,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
 
     setInput("");
   };
@@ -52,7 +59,13 @@ function Chat() {
 
         <div className="chat__headerInfo">
           <h3>{roomName}</h3>
-          <p>Last seen at ...</p>
+          <p>
+            Last seen at
+            <br />
+            {new Date(
+              messages[messages.length - 1]?.timestamp?.toDate()
+            ).toUTCString()}
+          </p>
         </div>
 
         <div className="chat__header__right">
@@ -70,7 +83,11 @@ function Chat() {
 
       <div className="chat__body">
         {messages.map((message) => (
-          <p className={`chat__message ${true && "chat__reciever"}`}>
+          <p
+            className={`chat__message ${
+              message.name === user.displayName && "chat__reciever"
+            }`}
+          >
             <span className="chat__name">{message.name}</span>
             {message.message}
             <span className="chat__timestamp">
